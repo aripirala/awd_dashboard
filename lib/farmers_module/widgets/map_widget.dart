@@ -7,10 +7,27 @@ import '../providers/farmer_provider.dart';
 import '../models/farmer.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import '../utils/phase_colors.dart';
-import 'cluster_marker.dart'; // New import
+import 'cluster_marker.dart';
+import 'search_box.dart';
 
-class MapWidget extends StatelessWidget {
+class MapWidget extends StatefulWidget {
+  @override
+  State<MapWidget> createState() => _MapWidgetState();
+}
+
+class _MapWidgetState extends State<MapWidget> {
   static final LatLng telanganaCenter = LatLng(17.8889, 79.1000);
+  final MapController _mapController = MapController();
+
+  void _animateToLocation(LatLng location, SearchType type) {
+    double zoom = switch (type) {
+      SearchType.farmer => 16.0, // Closest zoom for individual farmers
+      SearchType.village => 14.0, // Village level view
+      SearchType.district => 12.0, // District overview
+      _ => 15.0, // Default zoom
+    };
+    _mapController.move(location, zoom);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +59,7 @@ class MapWidget extends StatelessWidget {
               child: Stack(
                 children: [
                   FlutterMap(
+                    mapController: _mapController,
                     options: MapOptions(
                       initialCenter: telanganaCenter,
                       initialZoom: 7.0,
@@ -55,8 +73,7 @@ class MapWidget extends StatelessWidget {
                       MarkerClusterLayerWidget(
                         options: MarkerClusterLayerOptions(
                           maxClusterRadius: 45,
-                          size: const Size(
-                              50, 50), // Updated size for new cluster
+                          size: const Size(50, 50),
                           markers: markers,
                           builder: (context, markers) {
                             final phaseCounts = <FarmerPhase, int>{};
@@ -91,6 +108,14 @@ class MapWidget extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: SearchBox(
+                      onLocationSelected: _animateToLocation,
+                    ),
                   ),
                   Positioned(
                     right: 16,
