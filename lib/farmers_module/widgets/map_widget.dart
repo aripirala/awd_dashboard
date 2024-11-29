@@ -7,6 +7,7 @@ import '../providers/farmer_provider.dart';
 import '../models/farmer.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import '../utils/phase_colors.dart';
+import 'cluster_marker.dart'; // New import
 
 class MapWidget extends StatelessWidget {
   static final LatLng telanganaCenter = LatLng(17.8889, 79.1000);
@@ -54,7 +55,8 @@ class MapWidget extends StatelessWidget {
                       MarkerClusterLayerWidget(
                         options: MarkerClusterLayerOptions(
                           maxClusterRadius: 45,
-                          size: const Size(40, 40),
+                          size: const Size(
+                              50, 50), // Updated size for new cluster
                           markers: markers,
                           builder: (context, markers) {
                             final phaseCounts = <FarmerPhase, int>{};
@@ -69,37 +71,23 @@ class MapWidget extends StatelessWidget {
                                   (phaseCounts[farmer.phase] ?? 0) + 1;
                             }
 
-                            final dominantPhase = phaseCounts.entries
-                                .reduce((a, b) => a.value > b.value ? a : b)
-                                .key;
-
-                            return Container(
-                              decoration: BoxDecoration(
-                                color: PhaseColors.getColor(dominantPhase)
-                                    .withOpacity(0.8),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 2,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    blurRadius: 6,
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  markers.length.toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                            return Tooltip(
+                              message: phaseCounts.entries
+                                  .map((e) =>
+                                      '${PhaseColors.phaseName(e.key)}: ${e.value}')
+                                  .join('\n'),
+                              preferBelow: false,
+                              child: ClusterMarker(
+                                distribution: phaseCounts,
+                                totalCount: markers.length,
                               ),
                             );
                           },
+                          polygonOptions: PolygonOptions(
+                            borderColor: Colors.blueAccent,
+                            color: Colors.black12,
+                            borderStrokeWidth: 3,
+                          ),
                         ),
                       ),
                     ],
