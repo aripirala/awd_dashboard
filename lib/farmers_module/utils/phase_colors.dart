@@ -7,6 +7,7 @@ class PhaseColors {
   static const pipeInstallation = Color(0xFFF4A387);
   static const dry1 = Color(0xFF98B4A6);
   static const dry2 = Color(0xFF9C89B8);
+  static const complete = Color(0xFF03A9F4);
 
   // Define the order of phases
   static const List<FarmerPhase> phaseOrder = [
@@ -14,6 +15,7 @@ class PhaseColors {
     FarmerPhase.pipe_installation,
     FarmerPhase.dry1,
     FarmerPhase.dry2,
+    FarmerPhase.complete,
   ];
 
   static String phaseName(FarmerPhase phase) {
@@ -26,6 +28,8 @@ class PhaseColors {
         return 'Dry 1';
       case FarmerPhase.dry2:
         return 'Dry 2';
+      case FarmerPhase.complete:
+        return 'Complete';
     }
   }
 
@@ -39,6 +43,8 @@ class PhaseColors {
         return dry1;
       case FarmerPhase.dry2:
         return dry2;
+      case FarmerPhase.complete:
+        return complete;
     }
   }
 }

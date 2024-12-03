@@ -1,113 +1,94 @@
-// lib/farmers_module/services/mock_api.dart
 import 'dart:async';
-import 'dart:math';
+// import 'dart:convert';
+// import 'dart:math';
+import 'package:flutter/services.dart';
+// import 'package:latlong2/latlong.dart';
 import '../models/farmer.dart';
+import 'package:csv/csv.dart';
+import '../models/location.dart';
 
 class MockApi {
-  final Random _random = Random();
-
-  // District data structure
-  final Map<String, Map<String, dynamic>> _districtData = {
-    'Karimnagar': {
-      'center': const LatLng(18.4386, 79.1288),
-      'villages': {
-        'Manakondur': const LatLng(18.4517, 79.0947),
-        'Thimmapur': const LatLng(18.4234, 79.1756),
-        'Rajanna': const LatLng(18.3989, 79.1547),
-        'Chandurthi': const LatLng(18.4789, 79.0834),
-        'Gambhiraopet': const LatLng(18.4123, 79.1678),
-      }
-    },
-    'Warangal': {
-      'center': const LatLng(18.0000, 79.5833),
-      'villages': {
-        'Dharmasagar': const LatLng(17.9856, 79.5634),
-        'Hasanparthy': const LatLng(18.0234, 79.5923),
-        'Elkathurthi': const LatLng(18.0123, 79.5445),
-        'Shayampet': const LatLng(17.9789, 79.6012),
-        'Wardhannapet': const LatLng(18.0345, 79.5567),
-      }
-    }
-  };
-
-  // Generate coordinates within 3km radius of village center
-  LatLng _generateNearbyCoordinate(LatLng center) {
-    // 0.027 degrees is approximately 3km at these latitudes
-    double radius = 0.027;
-    double ang = _random.nextDouble() * 2 * pi;
-    double rad = _random.nextDouble() * radius;
-
-    return LatLng(
-      center.latitude + rad * cos(ang),
-      center.longitude + rad * sin(ang),
-    );
-  }
-
-  String _generateFarmerName() {
-    final firstNames = [
-      'Raj',
-      'Krishna',
-      'Venkat',
-      'Srinu',
-      'Ramesh',
-      'Suresh',
-      'Naresh',
-      'Mahesh',
-      'Raju',
-      'Prakash'
-    ];
-    final lastNames = [
-      'Reddy',
-      'Rao',
-      'Goud',
-      'Naidu',
-      'Kumar',
-      'Achari',
-      'Sharma',
-      'Varma',
-      'Chari',
-      'Prasad'
-    ];
-    return '${firstNames[_random.nextInt(firstNames.length)]} ${lastNames[_random.nextInt(lastNames.length)]}';
-  }
+  // final Random _random = Random();
 
   Future<List<Map<String, dynamic>>> getFarmers() async {
-    await Future.delayed(Duration(seconds: 1));
-    List<Map<String, dynamic>> farmers = [];
-    int farmerId = 0;
+    // Load the CSV data from the file
+    final csvData =
+        await rootBundle.loadString('lib/farmers_module/data/farmers.csv');
 
-    _districtData.forEach((district, districtInfo) {
-      Map<String, LatLng> villages =
-          Map<String, LatLng>.from(districtInfo['villages']);
+    // Parse the CSV data into a list of Farmer objects
+    final farmers = await _parseCsvDataToFarmers(csvData);
+    // Convert the list of Farmer objects to a list of Maps
+    return farmers.map((farmer) => farmer.toJson()).toList();
+  }
 
-      villages.forEach((village, centerCoord) {
-        // Generate 50 farmers per village
-        int farmersPerVillage = 50;
-        for (int i = 0; i < farmersPerVillage; i++) {
-          LatLng farmerCoord = _generateNearbyCoordinate(centerCoord);
-          farmers.add({
-            "id": (farmerId++).toString(),
-            "name": _generateFarmerName(),
-            "location": {
-              "latitude": farmerCoord.latitude,
-              "longitude": farmerCoord.longitude,
-              "district": district,
-              "village": village,
-            },
-            // Distribute phases somewhat evenly but with randomness
-            "phase": _random.nextInt(4),
-          });
-        }
-      });
-    });
+  // Future<List<Farmer>> _parseCsvDataToFarmers(String csvData) async {
+  //   final List<List<dynamic>> csvRows =
+  //       const CsvToListConverter().convert(csvData);
+  //   final List<Farmer> farmers = [];
+
+  //   for (int i = 1; i < csvRows.length; i++) {
+  //     // Skip the header row
+  //     final row = csvRows[i];
+  //     final farmerId = row[5] as String;
+  //     final farmerName = row[6] as String;
+  //     final latitude = double.parse(row[7]);
+  //     final longitude = double.parse(row[8]);
+  //     final district = row[2] as String;
+  //     final village = row[4] as String;
+  //     final mandal = row[3] as String;
+  //     final phaseIndex = int.parse(row[9] as String);
+  //     final farmerPhase = FarmerPhase.values[phaseIndex];
+
+  //     final farmer = Farmer(
+  //       id: farmerId,
+  //       name: farmerName,
+  //       location: Location(
+  //         latitude: latitude,
+  //         longitude: longitude,
+  //         district: district,
+  //         mandal: mandal,
+  //         village: village,
+  //       ),
+  //       phase: farmerPhase,
+  //     );
+  //     farmers.add(farmer);
+  //   }
+
+  //   return farmers;
+  // }
+  Future<List<Farmer>> _parseCsvDataToFarmers(String csvData) async {
+    final List<List<dynamic>> csvRows =
+        const CsvToListConverter().convert(csvData);
+    final List<Farmer> farmers = [];
+
+    for (int i = 1; i < csvRows.length; i++) {
+      // Skip the header row
+      final row = csvRows[i];
+      final farmerId = row[5] as String;
+      final farmerName = row[6] as String;
+      final latitude = row[8] as double;
+      final longitude = row[7] as double;
+      final district = row[2] as String;
+      final village = row[4] as String;
+      final mandal = row[3] as String;
+      final phaseIndex = row[9] as int;
+      final farmerPhase = FarmerPhase.values[phaseIndex];
+
+      final farmer = Farmer(
+        id: farmerId,
+        name: farmerName,
+        location: Location(
+          latitude: latitude,
+          longitude: longitude,
+          district: district,
+          village: village,
+          mandal: mandal,
+        ),
+        phase: farmerPhase,
+      );
+      farmers.add(farmer);
+    }
 
     return farmers;
   }
-}
-
-class LatLng {
-  final double latitude;
-  final double longitude;
-
-  const LatLng(this.latitude, this.longitude);
 }
