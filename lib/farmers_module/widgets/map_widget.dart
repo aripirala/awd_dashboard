@@ -1,10 +1,12 @@
-// lib/farmers_module/widgets/map_widget.dart
+//lib/farmers_module/widgets/map_widget.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../providers/farmer_provider.dart';
 import '../models/farmer.dart';
+import '../controllers/viewport_aware_map_controller.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import '../utils/phase_colors.dart';
 import 'cluster_marker.dart';
@@ -17,16 +19,52 @@ class MapWidget extends StatefulWidget {
 
 class _MapWidgetState extends State<MapWidget> {
   static final LatLng telanganaCenter = LatLng(17.8889, 79.1000);
-  final MapController _mapController = MapController();
+  late final ViewportAwareMapController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = ViewportAwareMapController(
+      onBoundsChanged: _handleBoundsChanged,
+    );
+  }
+
+  Widget _buildClusterMarker(List<Marker> markers, FarmerProvider provider) {
+    final phaseCounts = <FarmerPhase, int>{};
+    for (var marker in markers) {
+      final farmer = provider.filteredFarmers.firstWhere(
+        (f) =>
+            f.location.latitude == marker.point.latitude &&
+            f.location.longitude == marker.point.longitude,
+      );
+      phaseCounts[farmer.phase] = (phaseCounts[farmer.phase] ?? 0) + 1;
+    }
+
+    return Tooltip(
+      message: phaseCounts.entries
+          .map((e) => '${PhaseColors.phaseName(e.key)}: ${e.value}')
+          .join('\n'),
+      preferBelow: false,
+      child: ClusterMarker(
+        distribution: phaseCounts,
+        totalCount: markers.length,
+      ),
+    );
+  }
+
+  void _handleBoundsChanged(LatLngBounds bounds) {
+    final provider = Provider.of<FarmerProvider>(context, listen: false);
+    provider.updateVisibleFarmers(bounds);
+  }
 
   void _animateToLocation(LatLng location, SearchType type) {
     double zoom = switch (type) {
-      SearchType.farmer => 16.0, // Closest zoom for individual farmers
-      SearchType.village => 14.0, // Village level view
-      SearchType.district => 12.0, // District overview
-      _ => 15.0, // Default zoom
+      SearchType.farmer => 16.0,
+      SearchType.village => 14.0,
+      SearchType.district => 12.0,
+      _ => 15.0,
     };
-    _mapController.move(location, zoom);
+    _controller.move(location, zoom);
   }
 
   @override
@@ -55,14 +93,16 @@ class _MapWidgetState extends State<MapWidget> {
         return Column(
           children: [
             _buildDistributionRow(context, farmerProvider.filteredFarmers),
+            if (farmerProvider.isLoading) const LinearProgressIndicator(),
             Expanded(
               child: Stack(
                 children: [
                   FlutterMap(
-                    mapController: _mapController,
+                    mapController: _controller.mapController,
                     options: MapOptions(
                       initialCenter: telanganaCenter,
                       initialZoom: 7.0,
+                      onMapEvent: _controller.handleEvent,
                     ),
                     children: [
                       TileLayer(
@@ -75,36 +115,8 @@ class _MapWidgetState extends State<MapWidget> {
                           maxClusterRadius: 45,
                           size: const Size(50, 50),
                           markers: markers,
-                          builder: (context, markers) {
-                            final phaseCounts = <FarmerPhase, int>{};
-                            for (var marker in markers) {
-                              final farmer = farmerProvider.filteredFarmers
-                                  .firstWhere((f) =>
-                                      f.location.latitude ==
-                                          marker.point.latitude &&
-                                      f.location.longitude ==
-                                          marker.point.longitude);
-                              phaseCounts[farmer.phase] =
-                                  (phaseCounts[farmer.phase] ?? 0) + 1;
-                            }
-
-                            return Tooltip(
-                              message: phaseCounts.entries
-                                  .map((e) =>
-                                      '${PhaseColors.phaseName(e.key)}: ${e.value}')
-                                  .join('\n'),
-                              preferBelow: false,
-                              child: ClusterMarker(
-                                distribution: phaseCounts,
-                                totalCount: markers.length,
-                              ),
-                            );
-                          },
-                          polygonOptions: PolygonOptions(
-                            borderColor: Colors.blueAccent,
-                            color: Colors.black12,
-                            borderStrokeWidth: 3,
-                          ),
+                          builder: (context, markers) =>
+                              _buildClusterMarker(markers, farmerProvider),
                         ),
                       ),
                     ],

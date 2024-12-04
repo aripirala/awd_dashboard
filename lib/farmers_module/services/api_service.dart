@@ -2,9 +2,10 @@
 
 // import 'dart:convert';
 // import 'package:http/http.dart' as http;
+
+import 'package:flutter_map/flutter_map.dart';
 import '../models/farmer.dart';
 import 'mock_api.dart';
-import '../models/location.dart';
 
 // class ApiService {
 //   static const String baseUrl = 'YOUR_API_BASE_URL';
@@ -29,10 +30,9 @@ import '../models/location.dart';
 class ApiService {
   final MockApi _mockApi = MockApi();
 
-  Future<List<Farmer>> getFarmers() async {
+  Future<List<Farmer>> getFarmers({LatLngBounds? bounds}) async {
     try {
-      final jsonData = await _mockApi.getFarmers();
-      return jsonData.map((json) => Farmer.fromJson(json)).toList();
+      return await _mockApi.getFarmers(bounds: bounds);
     } catch (e) {
       print('Error fetching farmers: $e');
       return [];
